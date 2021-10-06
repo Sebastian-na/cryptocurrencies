@@ -1,6 +1,21 @@
 <template>
   <div>
-    <line-chart :data="dayHistory"></line-chart>
+    <h1>{{ coin.name }}</h1>
+    <img class="w-12" :src="imgSrc" :alt="coin.name" />
+    <area-chart
+      :data="history"
+      prefix="$"
+      :min="null"
+      :max="null"
+      :colors="colors"
+      :round="2"
+      :zeros="false"
+      xtitle="Time"
+      ytitle="Price"
+      thousands=","
+      :discrete="true"
+      :library="{ elements: { point: { radius: '1' } } }"
+    ></area-chart>
   </div>
 </template>
 
@@ -11,11 +26,11 @@ export default {
   data() {
     return {
       coin: {},
-      dayHistory: null,
-      yearHistory: {},
+      history: {},
       markets: {},
       isLoading: false,
       mode: "hours",
+      imgSrc: "",
     }
   },
 
@@ -23,44 +38,40 @@ export default {
     async getCoin() {
       this.isLoading = true
       const id = this.$route.params.id
-      let [coin, dayHistory, yearHistory, markets] = await Promise.all([
+      let [coin, history, markets] = await Promise.all([
         getAsset(id),
-        getAssetHistory(id, 1, "h1"),
         getAssetHistory(id, 365, "d1"),
         getMarkets(id),
       ])
-      // 2017 - 05 - 13
       this.coin = coin
-      console.log(dayHistory)
-
-      this.dayHistory = dayHistory.reduce((acum, item) => {
-        acum[item.time] = parseFloat(item.priceUsd).toFixed(2)
+      this.imgSrc = `https://static.coincap.io/assets/icons/${coin.symbol.toLowerCase()}@2x.png`
+      this.markets = markets
+      this.history = history.reduce((acum, item) => {
+        acum[this.convertUnixToDate(item.time)] = parseFloat(
+          item.priceUsd
+        ).toFixed(2)
         return acum
       }, {})
-      this.dayHistory = {}
-      this.yearHistory = yearHistory
-      this.markets = markets
+    },
+    convertUnixToDate(unixTimestamp) {
+      const date = new Date(unixTimestamp)
+      const year = date.getFullYear()
+      const month = date.getMonth()
+      const day = date.getDate()
+      const formatted = `${year}-${month}-${day}`
+      return formatted
+    },
+  },
+  computed: {
+    colors() {
+      const values = Object.values(this.history)
+      if (parseFloat(values[values.length - 1]) < parseFloat(values[0]))
+        return ["#f52011", "#666"]
+      return ["#1edb0d", "#666"]
     },
   },
   created() {
     this.getCoin()
-  },
-  convertUnixToDate(unixTimestamp) {
-    // Create a new JavaScript Date object based on the timestamp
-    // multiplied by 1000 so that the argument is in milliseconds, not seconds.
-    const date = new Date(unixTimestamp * 1000)
-    // Hours part from the timestamp
-    const hours = date.getHours()
-    // Minutes part from the timestamp
-    const minutes = "0" + date.getMinutes()
-    // Seconds part from the timestamp
-    const seconds = "0" + date.getSeconds()
-
-    // Will display time in 10-30-23 format
-    const formattedTime =
-      hours + "-" + minutes.substr(-2) + "-" + seconds.substr(-2)
-
-    return formattedTime
   },
 }
 </script>
