@@ -66,7 +66,7 @@ export default {
   computed: {
     coinsFiltered() {
       return this.coins.filter((coin) =>
-        coin.name.toLowerCase().includes(this.filter)
+        coin.name.toLowerCase().includes(this.filter.toLowerCase())
       )
     },
   },
