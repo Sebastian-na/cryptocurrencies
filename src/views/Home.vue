@@ -6,8 +6,8 @@
       type="text"
       class="my-10 w-full border-2 border-gray-300 outline-none focus:shadow-md p-2 transition-all"
       placeholder="Search by crypto name"
-      v-model="filter"
-      @compositionupdate="compositionUpdate($event)"
+      @input="filter = $event.target.value"
+      :value="filter"
     />
     <div class="overflow-x-auto">
       <px-table :coins="coins" :filter="filter" />
@@ -40,10 +40,6 @@ export default {
       const newAssets = await getAssets(100, this.offset)
       this.coins = [...this.coins, ...newAssets]
       this.offset += 100
-    },
-    compositionUpdate(event) {
-      console.log(event)
-      this.filter = event.data
     },
   },
 
