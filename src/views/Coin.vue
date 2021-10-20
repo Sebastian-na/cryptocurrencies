@@ -1,73 +1,250 @@
 <template>
-  <div>
-    <h1>{{ coin.name }}</h1>
-    <img class="w-12" :src="imgSrc" :alt="coin.name" />
-    <area-chart
-      :data="history"
-      prefix="$"
-      :min="null"
-      :max="null"
-      :colors="colors"
-      :round="2"
-      :zeros="false"
-      xtitle="Time"
-      ytitle="Price"
-      thousands=","
-      :discrete="true"
-      :library="{ elements: { point: { radius: '1' } } }"
-    ></area-chart>
-  </div>
+  <section>
+    <div>
+      <div class="flex gap-4 mx-auto items-center justify-center">
+        <img class="w-16 h-16" :src="imgSrc" :alt="coin.name" />
+        <h1 class="font-bold text-4xl text-center">
+          {{ coin.name }}
+          <span class="font-normal text-gray-600">({{ coin.symbol }})</span>
+        </h1>
+      </div>
+    </div>
+    <hr class="my-4" />
+    <div>
+      <div>
+        <h4 class="text-sm mb-4">{{ convertUnixToDate(Date.now(), true) }}</h4>
+        <div
+          class="grid grid-cols-1 gap-y-4 justify-center sm:grid-cols-2 lg:grid-cols-3"
+        >
+          <px-data
+            dataName="Rank"
+            :dataValue="coin.rank"
+            v-tooltip="{
+              text:
+                'This number is directly associated with the marketcap whereas the highest marketcap receives rank 1',
+              position: 'down',
+            }"
+          />
+          <px-data
+            dataName="Price"
+            :dataValue="formatPriceWithLetter(coin.priceUsd)"
+            v-tooltip="{
+              text:
+                'Volume-weighted price based on real-time market data, translated to USD',
+              position: 'down',
+            }"
+          />
+          <px-data
+            dataName="Supply"
+            :dataValue="formatPriceWithLetter(coin.supply)"
+            v-tooltip="{
+              text: 'Available supply for trading',
+              position: 'down',
+            }"
+          />
+          <px-data
+            dataName="Market cap"
+            :dataValue="formatPriceWithLetter(coin.marketCapUsd)"
+            v-tooltip="{
+              text: 'Supply x price',
+              position: 'down',
+            }"
+          />
+          <px-data
+            dataName="Trading volume"
+            :dataValue="formatPriceWithLetter(coin.volumeUsd24Hr)"
+            v-tooltip="{
+              text:
+                'Quantity of trading volume represented in USD over the last 24 hours',
+              position: 'down',
+            }"
+          />
+          <px-data
+            dataName="Change percent 24 hr"
+            :dataValue="parseFloat(coin.changePercent24Hr).toFixed(2) + '%'"
+            v-tooltip="{
+              text: 'The direction and value change in the last 24 hours',
+              position: 'down',
+            }"
+          />
+        </div>
+      </div>
+      <h2 class="font-bold text-2xl mt-10">
+        History
+        <span class="font-normal text-gray-600 text-xl">{{
+          mode === "day" ? "(last 24 hours)" : "(last year)"
+        }}</span>
+      </h2>
+      <form @change="modeChanged($event)" class="flex gap-4">
+        <div class="flex gap-1 items-center">
+          <input type="radio" id="dayMode" name="modeOption" checked />
+          <label for="dayMode">Day</label>
+        </div>
+        <div class="flex gap-1 items-center">
+          <input type="radio" id="yearMode" name="modeOption" />
+          <label for="yearMode">Year</label>
+        </div>
+      </form>
+
+      <area-chart
+        v-if="mode === 'year'"
+        class="mt-4"
+        :data="yearHistory"
+        prefix="$"
+        :min="getMinRounded(yearHistory)"
+        :max="getMaxRounded(yearHistory)"
+        :colors="colors(yearHistory)"
+        :round="2"
+        :zeros="false"
+        thousands=","
+        :discrete="true"
+        :library="{ elements: { point: { radius: '0' } } }"
+      ></area-chart>
+      <line-chart
+        v-else
+        class="mt-4"
+        :data="dayHistory"
+        prefix="$"
+        :colors="colors(dayHistory)"
+        :round="2"
+        :min="getMinRounded(dayHistory)"
+        :max="getMaxRounded(dayHistory)"
+        :zeros="false"
+        thousands=","
+        :discrete="true"
+        :library="{
+          elements: { point: { radius: '0' } },
+          animation: createProgressiveLineAnimation(dayHistory),
+          plugins: {
+            legend: false,
+          },
+          scales: {
+            x: {
+              type: 'linear',
+            },
+          },
+        }"
+      >
+      </line-chart>
+      <h2 class="font-bold text-2xl mt-10">
+        Main markets
+      </h2>
+      <div class="overflow-x-auto">
+        <px-markets-table :markets="markets" class="mt-4" />
+      </div>
+    </div>
+  </section>
 </template>
 
 <script>
 import { getAsset, getAssetHistory, getMarkets } from "@/api/index"
+import { createProgressiveLineAnimation } from "@/utils/chartsAnimations.js"
+
+import numeral from "numeral"
+import PxData from "@/components/PxData"
+import PxMarketsTable from "@/components/PxMarketsTable"
 export default {
   name: "Coin",
   data() {
     return {
       coin: {},
-      history: {},
+      yearHistory: {},
       markets: {},
       isLoading: false,
-      mode: "hours",
+      mode: "day",
       imgSrc: "",
     }
+  },
+  components: {
+    PxData,
+    PxMarketsTable,
   },
 
   methods: {
     async getCoin() {
       this.isLoading = true
       const id = this.$route.params.id
-      let [coin, history, markets] = await Promise.all([
+      let [coin, yearHistory, dayHistory, markets] = await Promise.all([
         getAsset(id),
         getAssetHistory(id, 365, "d1"),
+        getAssetHistory(id, 1, "h1"),
         getMarkets(id),
       ])
       this.coin = coin
       this.imgSrc = `https://static.coincap.io/assets/icons/${coin.symbol.toLowerCase()}@2x.png`
       this.markets = markets
-      this.history = history.reduce((acum, item) => {
+      console.log(markets)
+      this.yearHistory = yearHistory.reduce((acum, item) => {
         acum[this.convertUnixToDate(item.time)] = parseFloat(
           item.priceUsd
         ).toFixed(2)
         return acum
       }, {})
+      this.dayHistory = dayHistory.reduce((acum, item) => {
+        acum[this.convertUnixToHour(item.time)] = parseFloat(
+          item.priceUsd
+        ).toFixed(2)
+        return acum
+      }, {})
     },
-    convertUnixToDate(unixTimestamp) {
+    createProgressiveLineAnimation(data) {
+      return createProgressiveLineAnimation(data)
+    },
+    modeChanged(e) {
+      if (e.target.id === "yearMode") {
+        this.mode = "year"
+      } else {
+        this.mode = "day"
+      }
+    },
+    convertUnixToDate(unixTimestamp, string) {
       const date = new Date(unixTimestamp)
+      if (string) {
+        return date.toLocaleString("default", {
+          month: "long",
+          year: "numeric",
+          day: "numeric",
+        })
+      }
       const year = date.getFullYear()
       const month = date.getMonth()
       const day = date.getDate()
       const formatted = `${year}-${month}-${day}`
       return formatted
     },
-  },
-  computed: {
-    colors() {
-      const values = Object.values(this.history)
+    convertUnixToHour(unixTimestamp) {
+      const date = new Date(unixTimestamp)
+      const hours = date.getHours()
+      const minutes = date.getMinutes()
+      const formatted = `${hours}:${minutes}0`
+      return formatted
+    },
+    formatPriceWithLetter(price) {
+      return numeral(parseFloat(price)).format("$0a.00")
+    },
+    colors(history) {
+      const values = Object.values(history)
       if (parseFloat(values[values.length - 1]) < parseFloat(values[0]))
         return ["#f52011", "#666"]
       return ["#1edb0d", "#666"]
+    },
+    getMinRounded(history) {
+      const min = Math.min(...Object.values(history).map((n) => parseInt(n)))
+      const lenght = min.toString().length
+      let divider = 1
+      for (let i = 1; i < lenght; i++) {
+        divider *= 10
+      }
+      return Math.floor(min / divider) * divider - 1
+    },
+    getMaxRounded(history) {
+      const max = Math.max(...Object.values(history).map((n) => parseInt(n)))
+      const lenght = max.toString().length
+      let divider = 1
+      for (let i = 1; i < lenght; i++) {
+        divider *= 10
+      }
+      return Math.ceil(max / divider) * divider + 1
     },
   },
   created() {

@@ -9,6 +9,7 @@
       @input="filter = $event.target.value"
       :value="filter"
     />
+
     <div class="overflow-x-auto">
       <px-table :coins="coins" :filter="filter" />
     </div>

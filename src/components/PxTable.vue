@@ -1,5 +1,5 @@
 <template>
-  <div class="table min-w-table">
+  <div class="table min-w-table w-full">
     <div class="table-row bg-gray-50 font-bold">
       <div class="table-cell py-4 px-4">#</div>
       <div class="table-cell py-4">Name</div>
@@ -18,7 +18,7 @@
       :to="{ name: 'Coin', params: { id: coin.id } }"
       class="table-row hover:bg-gray-100 cursor-pointer focus:bg-gray-200 active:bg-gray-200 text-sm"
     >
-      <div class="table-cellr align-middle p-4">{{ coin.rank }}</div>
+      <div class="table-cell align-middle p-4">{{ coin.rank }}</div>
       <div class="table-cell align-middle font-semibold">
         <div class="inline-table text-white align-middle text-sm">
           <img
@@ -55,7 +55,7 @@
 </template>
 
 <script>
-import { formatter } from "../utils/usdFormatter"
+import numeral from "numeral"
 export default {
   name: "PxTable",
   props: {
@@ -76,33 +76,8 @@ export default {
       return string.charAt(0).toUpperCase() + string.slice(1)
     },
     format(string) {
-      return formatter.format(parseFloat(string))
+      return numeral(parseFloat(string)).format("$0,0.00")
     },
   },
 }
 </script>
-
-<style scoped>
-td {
-  padding: 20px 0px;
-  font-size: 0.6rem;
-  text-align: center;
-}
-
-th {
-  padding: 5px;
-  font-size: 0.6rem;
-}
-
-@media (min-width: 640px) {
-  td,
-  th {
-    padding: 20px;
-    font-size: 1rem;
-  }
-
-  th {
-    padding: 12px;
-  }
-}
-</style>
