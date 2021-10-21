@@ -14,58 +14,39 @@
       <div>
         <h4 class="text-sm mb-4">{{ convertUnixToDate(Date.now(), true) }}</h4>
         <div
-          class="grid grid-cols-1 gap-y-4 justify-center sm:grid-cols-2 lg:grid-cols-3"
+          class="grid grid-cols-1 gap-y-4 gap-x-12 justify-center sm:grid-cols-2 lg:grid-cols-3"
         >
           <px-data
             dataName="Rank"
             :dataValue="coin.rank"
-            v-tooltip="{
-              text:
-                'This number is directly associated with the marketcap whereas the highest marketcap receives rank 1',
-              position: 'down',
-            }"
+            tooltip="this number is directly associated with the marketcap whereas the highest marketcap receives rank 1"
           />
           <px-data
             dataName="Price"
             :dataValue="formatPriceWithLetter(coin.priceUsd)"
-            v-tooltip="{
-              text:
-                'Volume-weighted price based on real-time market data, translated to USD',
-              position: 'down',
-            }"
+            tooltip="
+              Volume-weighted price based on real-time market data, translated to USD
+            "
           />
           <px-data
             dataName="Supply"
             :dataValue="formatPriceWithLetter(coin.supply)"
-            v-tooltip="{
-              text: 'Available supply for trading',
-              position: 'down',
-            }"
+            tooltip="Available supply for trading"
           />
           <px-data
             dataName="Market cap"
             :dataValue="formatPriceWithLetter(coin.marketCapUsd)"
-            v-tooltip="{
-              text: 'Supply x price',
-              position: 'down',
-            }"
+            tooltip="Supply x price"
           />
           <px-data
             dataName="Trading volume"
             :dataValue="formatPriceWithLetter(coin.volumeUsd24Hr)"
-            v-tooltip="{
-              text:
-                'Quantity of trading volume represented in USD over the last 24 hours',
-              position: 'down',
-            }"
+            tooltip="Quantity of trading volume represented in USD over the last 24 hours"
           />
           <px-data
             dataName="Change percent 24 hr"
             :dataValue="parseFloat(coin.changePercent24Hr).toFixed(2) + '%'"
-            v-tooltip="{
-              text: 'The direction and value change in the last 24 hours',
-              position: 'down',
-            }"
+            tooltip="The direction and value change in the last 24 hours"
           />
         </div>
       </div>
@@ -86,7 +67,7 @@
         </div>
       </form>
 
-      <area-chart
+      <line-chart
         v-if="mode === 'year'"
         class="mt-4"
         :data="yearHistory"
@@ -98,8 +79,19 @@
         :zeros="false"
         thousands=","
         :discrete="true"
-        :library="{ elements: { point: { radius: '0' } } }"
-      ></area-chart>
+        :library="{
+          elements: { point: { radius: '0' } },
+          animation: createProgressiveLineAnimation(dayHistory),
+          plugins: {
+            legend: false,
+          },
+          scales: {
+            x: {
+              type: 'linear',
+            },
+          },
+        }"
+      />
       <line-chart
         v-else
         class="mt-4"
@@ -120,12 +112,17 @@
           },
           scales: {
             x: {
-              type: 'linear',
+              duration: 5000,
+              from: 0,
+            },
+            y: {
+              duration: 3000,
+              from: 500,
             },
           },
         }"
-      >
-      </line-chart>
+      />
+
       <h2 class="font-bold text-2xl mt-10">
         Main markets
       </h2>
